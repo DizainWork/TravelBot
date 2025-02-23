@@ -1,15 +1,139 @@
 import sqlite3
-from datetime import datetime
+import pandas as pd
 
 class Database:
     def __init__(self):
-        self.conn = sqlite3.connect('travel_agency.db', check_same_thread=False)
+        self.conn = sqlite3.connect('travel_agency.db')
+        self.cursor = self.conn.cursor()
         self.create_tables()
 
     def create_tables(self):
-        cursor = self.conn.cursor()
-        
-        # Таблица для авиабилетов
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS flights (
+            id INTEGER PRIMARY KEY,
+            from_city TEXT,
+            to_city TEXT,
+            date TEXT,
+            price REAL,
+            available_seats INTEGER
+        )
+        ''')
+
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tours (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            destination TEXT,
+            duration INTEGER,
+            price REAL,
+            description TEXT,
+            available_places INTEGER
+        )
+        ''')
+
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS hotels (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            location TEXT,
+            stars INTEGER,
+            price_per_night REAL,
+            description TEXT
+        )
+        ''')
+
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS excursions (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            location TEXT,
+            duration INTEGER,
+            price REAL,
+            description TEXT,
+            available_places INTEGER
+        )
+        ''')
+
+        self.cursor.execute('''
+        CREATE TABLE IF NOT EXISTS text_blocks (
+            section TEXT PRIMARY KEY,
+            content TEXT
+        )
+        ''')
+
+        self.conn.commit()
+
+    def load_data_from_excel(self):
+        try:
+            df_flights = pd.read_excel('travel_data.xlsx', sheet_name='Flights')
+            df_tours = pd.read_excel('travel_data.xlsx', sheet_name='Tours')
+            df_hotels = pd.read_excel('travel_data.xlsx', sheet_name='Hotels')
+            df_excursions = pd.read_excel('travel_data.xlsx', sheet_name='Excursions')
+
+            # Удаляем старые данные
+            self.cursor.execute('DELETE FROM flights')
+            self.cursor.execute('DELETE FROM tours')
+            self.cursor.execute('DELETE FROM hotels')
+            self.cursor.execute('DELETE FROM excursions')
+
+            # Загружаем новые данные
+            df_flights.to_sql('flights', self.conn, if_exists='append', index=False)
+            df_tours.to_sql('tours', self.conn, if_exists='append', index=False)
+            df_hotels.to_sql('hotels', self.conn, if_exists='append', index=False)
+            df_excursions.to_sql('excursions', self.conn, if_exists='append', index=False)
+
+            self.conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error loading data from Excel: {e}")
+            return False
+
+    def get_flights(self):
+        self.cursor.execute('SELECT * FROM flights')
+        return self.cursor.fetchall()
+
+    def get_flight(self, id):
+        self.cursor.execute('SELECT * FROM flights WHERE id = ?', (id,))
+        return self.cursor.fetchone()
+
+    def get_tours(self):
+        self.cursor.execute('SELECT * FROM tours')
+        return self.cursor.fetchall()
+
+    def get_tour(self, id):
+        self.cursor.execute('SELECT * FROM tours WHERE id = ?', (id,))
+        return self.cursor.fetchone()
+
+    def get_hotels(self):
+        self.cursor.execute('SELECT * FROM hotels')
+        return self.cursor.fetchall()
+
+    def get_hotel(self, id):
+        self.cursor.execute('SELECT * FROM hotels WHERE id = ?', (id,))
+        return self.cursor.fetchone()
+
+    def get_excursions(self):
+        self.cursor.execute('SELECT * FROM excursions')
+        return self.cursor.fetchall()
+
+    def get_excursion(self, id):
+        self.cursor.execute('SELECT * FROM excursions WHERE id = ?', (id,))
+        return self.cursor.fetchone()
+
+    def get_text_block(self, section):
+        self.cursor.execute('SELECT content FROM text_blocks WHERE section = ?', (section,))
+        result = self.cursor.fetchone()
+        return result[0] if result else None
+
+    def update_text_block(self, section, content):
+        self.cursor.execute('''
+        INSERT OR REPLACE INTO text_blocks (section, content)
+        VALUES (?, ?)
+        ''', (section, content))
+        self.conn.commit()
+
+    def __del__(self):
+        self.conn.close()иабилетов
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS flights (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
